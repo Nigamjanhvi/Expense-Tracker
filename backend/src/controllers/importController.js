@@ -171,10 +171,14 @@ async function resolveAnomaly(req, res, next) {
 
       let splitMembers = [];
       if (rawData.split_with) {
-        const splitNames = rawData.split_with.split(',').map(n => n.trim().toLowerCase());
+        const splitNames = rawData.split_with.split(/[,;|]/).map(n => n.trim().toLowerCase()).filter(Boolean);
+        const seenIds = new Set();
         for (const name of splitNames) {
           const u = activeMembers.find(m => m.fullName.toLowerCase() === name);
-          if (u) splitMembers.push(u);
+          if (u && !seenIds.has(u.id)) {
+            seenIds.add(u.id);
+            splitMembers.push(u);
+          }
         }
       } else {
         splitMembers = activeMembers;

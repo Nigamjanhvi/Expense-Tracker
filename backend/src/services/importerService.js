@@ -419,6 +419,7 @@ class CSVImporter {
         }
 
         const validMembers = [];
+        const seenUserIds = new Set();
         let hasUnknownInSplit = false;
 
         for (const name of rawSplitNames) {
@@ -439,6 +440,11 @@ class CSVImporter {
           }
 
           const user = await getOrAddGroupMember(norm, group.id);
+          if (seenUserIds.has(user.id)) {
+            continue;
+          }
+          seenUserIds.add(user.id);
+
           const membership = await prisma.groupMembership.findFirst({
             where: { groupId: group.id, userId: user.id }
           });
