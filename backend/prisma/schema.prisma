@@ -1,0 +1,126 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  fullName     String
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  memberships       GroupMembership[]
+  expensesPaid      Expense[]         @relation("ExpensePaidBy")
+  expensesCreated   Expense[]         @relation("ExpenseCreatedBy")
+  splits            ExpenseSplit[]
+  settlementsPaid   Settlement[]      @relation("SettlementPaidBy")
+  settlementsReceived Settlement[]    @relation("SettlementPaidTo")
+  importSessions    ImportSession[]
+}
+
+model ExpenseGroup {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+
+  memberships  GroupMembership[]
+  expenses     Expense[]
+  settlements  Settlement[]
+  importSessions ImportSession[]
+}
+
+model GroupMembership {
+  id       Int       @id @default(autoincrement())
+  group    ExpenseGroup @relation(fields: [groupId], references: [id])
+  groupId  Int
+  user     User      @relation(fields: [userId], references: [id])
+  userId   Int
+  joinedAt DateTime  @db.Date
+  leftAt   DateTime? @db.Date
+
+  @@unique([groupId, userId, joinedAt])
+}
+
+model Expense {
+  id           Int      @id @default(autoincrement())
+  group        ExpenseGroup @relation(fields: [groupId], references: [id])
+  groupId      Int
+  description  String
+  amount       Decimal  @db.Decimal(10, 2)
+  currency     String   @default("INR")
+  amountInr    Decimal  @db.Decimal(10, 2)
+  paidBy       User     @relation("ExpensePaidBy", fields: [paidById], references: [id])
+  paidById     Int
+  date         DateTime @db.Date
+  splitType    String
+  isDeleted    Boolean  @default(false)
+  isSettlement Boolean  @default(false)
+  notes        String?
+  createdAt    DateTime @default(now())
+  createdBy    User     @relation("ExpenseCreatedBy", fields: [createdById], references: [id])
+  createdById  Int
+
+  splits ExpenseSplit[]
+}
+
+model ExpenseSplit {
+  id          Int     @id @default(autoincrement())
+  expense     Expense @relation(fields: [expenseId], references: [id])
+  expenseId   Int
+  user        User    @relation(fields: [userId], references: [id])
+  userId      Int
+  amountOwed  Decimal @db.Decimal(10, 2)
+
+  @@unique([expenseId, userId])
+}
+
+model Settlement {
+  id        Int          @id @default(autoincrement())
+  group     ExpenseGroup @relation(fields: [groupId], references: [id])
+  groupId   Int
+  paidBy    User         @relation("SettlementPaidBy", fields: [paidById], references: [id])
+  paidById  Int
+  paidTo    User         @relation("SettlementPaidTo", fields: [paidToId], references: [id])
+  paidToId  Int
+  amount    Decimal      @db.Decimal(10, 2)
+  date      DateTime     @db.Date
+  notes     String?
+  createdAt DateTime     @default(now())
+}
+
+model ImportSession {
+  id                Int          @id @default(autoincrement())
+  fileName          String
+  importedAt        DateTime     @default(now())
+  importedBy        User         @relation(fields: [importedById], references: [id])
+  importedById      Int
+  group             ExpenseGroup @relation(fields: [groupId], references: [id])
+  groupId           Int
+  totalRows         Int          @default(0)
+  cleanRows         Int          @default(0)
+  flaggedRows       Int          @default(0)
+  rejectedRows      Int          @default(0)
+  reclassifiedRows  Int          @default(0)
+
+  anomalies ImportAnomaly[]
+}
+
+model ImportAnomaly {
+  id              Int           @id @default(autoincrement())
+  session         ImportSession @relation(fields: [sessionId], references: [id])
+  sessionId       Int
+  rowNumber       Int
+  rawData         Json
+  anomalyType     String
+  description     String
+  actionTaken     String
+  resolution      String?
+  resolvedByUser  Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+}
