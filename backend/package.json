@@ -10,7 +10,7 @@
     "dev": "nodemon server.js",
     "migrate": "npx prisma migrate deploy",
     "generate": "npx prisma generate",
-    "postinstall": "npx prisma generate"
+    "build": "npm run generate && npm run migrate"
   },
   "dependencies": {
     "@prisma/client": "^5.11.0",
